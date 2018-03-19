@@ -75,34 +75,3 @@ RUN chmod +x run.sh
 RUN chmod +x run_test.sh
 
 CMD spark-submit --jars `pwd`/target/sparkhacks-0.0.1-SNAPSHOT.jar dirhash.py /hash_this/ 2> /dev/null
-
-
-# todo: move he following to readme.md
-
-
-# run with:
-#  docker build -t dirh . ;and docker run -it -v (realpath ..)/test2/:/hash_this dirh
-
-
-
-# debugging: 
-
-# docker build -t dirh . ;and docker run -it dirh bash
-
-# test spark:
-# cd $SPARK_HOME
-# ./bin/run-example SparkPi 10
-
-# test dirhash:
-# spark-submit --jars `pwd`/target/sparkhacks-0.0.1-SNAPSHOT.jar dirhash.py /hash_this/
-
-# run as python:
-# $SPARK_HOME/bin/pyspark --jars `pwd`/target/sparkhacks-0.0.1-SNAPSHOT.jar
-# import dirhash
-# hash_value = dirhash.hash_directory('/hash_this', 'sha256', '128M', SparkContext.getOrCreate() )
-
-# todo: run as python
-# export PYTHONPATH=$SPARK_HOME/python/:$PYTHONPATH
-# python
-# import dirhash
-# hash_value = dirhash.hash_directory('/dirhash', 'sha256', '128M' )
