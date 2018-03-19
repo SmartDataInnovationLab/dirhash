@@ -4,13 +4,9 @@ Create and verify hash values for contents of entire directories in parallel wit
 
 This is tool is design to run on the sdil-platform.
 
-<<<<<<< HEAD
 Original Authors: Gunnar Hartung / Niklas Baumstark
-=======
-Original Authors: Gunnar Hartung (gunnar.hartung@kit.edu) / Niklas Baumstark (niklas.baumstark@gmail.com)
->>>>>>> ca78f4ba5637ba7e1f138786f9946599741ebbc3
 
-Current Authors: Björn Jürgens (juergens@teco.edu) / Dr. Till Riedel <till.riedel@kit.edu>
+Current Authors: Björn Jürgens / Dr. Till Riedel
 
 ## Getting started
 
