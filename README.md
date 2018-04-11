@@ -25,6 +25,28 @@ Run:
 
 ## dev notes
 
+### test on sdil 
+
+use your local IDE to work directly on sdil files: 
+
+    sudo apt install sshfs
+    sshfs ugfam@login-l.sdil.kit.edu:/gpfs/smartdata/ugfam ~/sdil/
+    
+run code on sdil: 
+
+    # connect to spark-machine (which is not visible from outside)
+    ssh ugfam@login-l.sdil.kit.edu
+    ssh ugfam@bi-01-login.sdil.kit.edu
+    
+    # setup project
+    mkdir dev && cd dev
+    git clone git@github.com:SmartDataInnovationLab/dirhash.git
+    pip install --user pysha3 pyblake2
+    
+    # run code
+    cd ~/dev/dirhash/
+    ./run_test.sh
+    
 ### test locally
 
     docker build -t dirh .
