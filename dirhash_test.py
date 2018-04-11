@@ -107,7 +107,6 @@ class DirHashTests(unittest.TestCase):
         
         # Create a new temporary folder
         self.dir = tempfile.mkdtemp(self.__name__, dir=os.getcwd()) # this folder should be on a hadoop file system
-        os.mkdir(self.dir)
         
         
         dirhash._logger.info("writing test data to folder \"%s\"", self.dir)
