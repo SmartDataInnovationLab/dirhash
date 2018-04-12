@@ -101,6 +101,7 @@ import sys
 import binascii
 from pyspark import SparkContext
 import logging
+import os
 
 # get logger instance
 _logger = logging.getLogger("dirhash")
@@ -564,6 +565,12 @@ def _main(argv):
         help='Verify that the given directory has the given hash.',
         dest='hash_str'
     )
+
+    p.add_argument('--check-name', '-cn', '--verify-name', '-vn',
+        help='Verify that the name of the given directory matches it\'s content.',
+        dest='hash_name',
+        action='store_true')
+
     p.add_argument('--block-size', '-b',
         default=_DEFAULT_BLOCK_SIZE,
         help='Block size. Ignored if --verify (or -v, -c or --check) is given.',
@@ -582,10 +589,18 @@ def _main(argv):
     args = p.parse_args(argv[1:])
     _logger.debug("Parsed arguments: %s", args)
     
-    if args.hash_str:
-        
-        match = verify_directory_hash(args.dir, args.hash_str)
-        _, _, _, expected_hash_value = _parse_hash_string(args.hash_str)
+    if args.hash_str or args.hash_name:
+        if args.hash_str and args.hash_name:
+            raise ValueError("parameter --check and --check-name can not be used together ")
+
+        if args.hash_str:
+            expected_hash = args.hash_str
+        else:
+            expected_hash = os.path.basename(os.path.normpath(args.dir))
+
+
+        match = verify_directory_hash(args.dir, expected_hash)
+        _, _, _, expected_hash_value = _parse_hash_string(expected_hash)
         
         if match:
             print(
@@ -603,7 +618,7 @@ def _main(argv):
                     "Actual:", match.actual_hash_value()
                 )
             )
-            exit(1)
+            exit(1) # return error to caller
     
     else:
         h = hash_directory(args.dir, args.hash_algo, args.blocksize)
