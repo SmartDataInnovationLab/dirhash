@@ -18,7 +18,7 @@ Example use:
 >>> )
 
 This will return a string of the form
-"v1:sha256:128M:hash_value_in_hexadecimal".
+"v1-sha256-128M-hash_value_in_hexadecimal".
 
 .. note:: The directory to be hashed must be available to PySpark.
 Thus, it should be located e.g. on a Hadoop file system,
@@ -247,14 +247,14 @@ def _suffix_factor(suffix):
 def _build_hash_string(algo, blocksize, digest):
     assert(algo in _supported_hash_algorithms)
     assert(_parse_blocksize(blocksize)) # this will throw an error if the blocksize is not well-formatted
-    return ":".join(("v1", algo.lower(), blocksize, digest))
+    return "-".join(("v1", algo.lower(), blocksize, digest))
 
 
 _hexadecimal_regex_as_str = "[0-9a-fA-F]+"
 _hexadecimal_regex = re.compile("\A" + _hexadecimal_regex_as_str + "\Z")
 
 def _parse_hash_string(hash_string):
-    version, hash_function, blocksize, hash_value = hash_string.split(":")
+    version, hash_function, blocksize, hash_value = hash_string.split("-")
     if version != "v1":
         raise ValueError("unknown hash value version: \"%s\"" % version)
         

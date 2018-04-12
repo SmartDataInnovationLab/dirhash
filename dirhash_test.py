@@ -264,7 +264,7 @@ class DirHashTests(unittest.TestCase):
         h.update(self.ABC_CHUNK_SHA256)
         
         correct_hash_value = h.hexdigest()
-        correct_hash_str = 'v1:sha256:32M:' + correct_hash_value
+        correct_hash_str = 'v1-sha256-32M-' + correct_hash_value
         
         # test _build_hash_str
         self.assertEqual(dirhash._build_hash_string('SHA256', '32M', correct_hash_value), correct_hash_str)
