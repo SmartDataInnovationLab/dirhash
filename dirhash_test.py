@@ -104,10 +104,13 @@ class DirHashTests(unittest.TestCase):
         """creates some test data in a temporary folder.
         
         This function is called automatically before the tests are run."""
-        
+
         # Create a new temporary folder
         self.dir = tempfile.mkdtemp(self.__name__, dir=os.getcwd()) # this folder should be on a hadoop file system
-        
+
+        if self.dir.startswith("/gpfs/"):
+            # remove /gpfs/ because on sdil hadoop-path starts at "/smartdata/"
+            self.dir = "/" + self.dir.split("/", 2)[2]
         
         dirhash._logger.info("writing test data to folder \"%s\"", self.dir)
         
