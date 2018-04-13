@@ -22,6 +22,10 @@ You may want to install the pysha3 and/or pyblake2 module from PyPI:
 Run:
 
     $ ./run.sh hdfs://localhost/tmp/input-text 2>/dev/null
+    
+read the help-message: 
+
+    $ spark-submit dirhash.py --help 2>/dev/null
 
 ## dev notes
 
