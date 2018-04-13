@@ -101,7 +101,9 @@ import sys
 import binascii
 from pyspark import SparkContext
 import logging
+
 import os
+import shutil
 
 # get logger instance
 _logger = logging.getLogger("dirhash")
@@ -121,7 +123,7 @@ if __name__ == "__main__":
 # See: https://pypi.python.org/pypi/pysha3
 # See: https://pypi.python.org/pypi/pyblake2
 if sys.version_info < (3,6):
-    
+
     try:
         # Importing the sha3 module patches the hashlib module,
         # so that no further changes are necessary.
@@ -134,7 +136,7 @@ if sys.version_info < (3,6):
             "Failed to import SHA-3 module with exception %s", e,
             extra={'exception': e}
         )
-    
+
     try:
         from pyblake2 import blake2b as _blake2b, blake2s as _blake2s
         _blake2_present = True
@@ -165,7 +167,7 @@ _HASH_FUNC_WHITELIST = {
     'blake2s',
     # sha 3 family
     'sha3_224',
-    'sha3_256', 
+    'sha3_256',
     'sha3_384',
     'sha3_512',
 }
@@ -189,7 +191,7 @@ def supported_hash_algorithms():
     supported hash algorithms.
     These can be passed to func:`get_hash_func()` in order to obtain an
     instance of the respective hash function."""
-    
+
     return _supported_hash_algorithms
 
 def get_hash_func(name):
@@ -200,7 +202,7 @@ def get_hash_func(name):
     :returns: an instance of the hash function.
 		The returned instance can be used as if returned by `hashlib.new()`.
     :raises ValueError: if the name does not refer to a supported hash function."""
-    
+
     if name in hashlib.algorithms_available & supported_hash_algorithms():
         return hashlib.new(name)
     elif _sha3_present and name == "sha3_224":
@@ -258,25 +260,25 @@ def _parse_hash_string(hash_string):
     version, hash_function, blocksize, hash_value = hash_string.split("-")
     if version != "v1":
         raise ValueError("unknown hash value version: \"%s\"" % version)
-        
+
     # raises an exception if the hash function is unknown
     get_hash_func(hash_function)
-    
+
     # raises an exception if the blocksize is not well-formatted
     blocksize = _parse_blocksize(blocksize)
-    
+
     # check that the hash value is hexadecimal
     if not _hexadecimal_regex.match(hash_value):
         raise ValueError("malformed hash value: \"%s\"" % hash_value)
-    
+
     return version, hash_function, blocksize, hash_value
 
 
 def _file_chunks(sc, fpath, recordlength=1024):
     """returns a RDD consisting of all chunks of the file at fpath."""
-    
-    rdd = sc.newAPIHadoopFile(fpath, 
-        'niklasb.sparkhacks.FixedLengthBinaryInputFormat', 
+
+    rdd = sc.newAPIHadoopFile(fpath,
+        'niklasb.sparkhacks.FixedLengthBinaryInputFormat',
         'org.apache.hadoop.io.LongWritable',
         'org.apache.hadoop.io.BytesWritable',
         conf={'org.apache.spark.input.FixedLengthBinaryInputFormat.recordLength': str(recordlength)})
@@ -291,7 +293,7 @@ def _hash_chunk(path, num, content, hash_func):
     :param num: specifies the block index of content in the file. (I.e., 0, 1, 2, 3, ...)
     :param hash_func: the name of the hash function to be used for hashing.
     """
-    
+
     h = get_hash_func(hash_func)
     h.update(path)
     h.update('\0')
@@ -303,7 +305,7 @@ def _hash_chunk(path, num, content, hash_func):
 
 
 def hash_directory_raw(dir, algo, blocksize, sparkcontext=None):
-    
+
     """Computes the hash value of the directory `dir`, using the given hash function `algo` and the given `blocksize`.
     
     This function behaves very much like func:`hash_directory`, but returns _only_ the hash value as a hexadecimal string,
@@ -317,9 +319,9 @@ def hash_directory_raw(dir, algo, blocksize, sparkcontext=None):
     :returns: the string representation of the hash value of the given directory, excluding the hash function's name and the blocksize.
     :raises ValueError: if algo does not refer to a supported hash function.
     """
-    
+
     dir = dir.rstrip("/")
-    
+
     # make sure we have a Spark Context
     if sparkcontext is None:
         _logger.debug("creating a new Spark context")
@@ -331,9 +333,9 @@ def hash_directory_raw(dir, algo, blocksize, sparkcontext=None):
     else:
         _logger.debug("using spark context passed as an argument")
         sc = sparkcontext
-        
+
     _logger.info("Hashing directory %s with algorithm %s and blocksize %d", dir, algo, blocksize)
-    
+
     # FIXME: there must be cleaner way to recursively list files with hadoop in PySpark.
     directory_listing = subprocess.check_output(
         ['hadoop', 'fs', '-ls', '-R', dir],
@@ -341,7 +343,7 @@ def hash_directory_raw(dir, algo, blocksize, sparkcontext=None):
     )
     _logger.debug("directory listing as returned by hadoop: %s", directory_listing)
     directory_listing = directory_listing.strip().splitlines()
-    
+
     # FIXME: Is s (for setuid, sticky, ...) valid on HDFS?
     regex = (
         "\A" # start of string \
@@ -373,8 +375,8 @@ def hash_directory_raw(dir, algo, blocksize, sparkcontext=None):
         is_dir = (match.group(1) == "d")
         # print(match, match.group(0), match.group(1), match.group(2), match.group(3), match.group(4), match.group(5))
         assert(file_path.startswith(dir))
-        
-        
+
+
         target_relative_filepath = file_path[len(dir) + 1:]
         if not is_dir:
             hadoop_relative_filepaths.append(file_path)
@@ -382,62 +384,62 @@ def hash_directory_raw(dir, algo, blocksize, sparkcontext=None):
             all_entries.append(target_relative_filepath)
         else:
             all_entries.append(target_relative_filepath + '/')
-    
+
     # some logging output
     _logger.info("All entries: %s", all_entries)
     _logger.info("Hashing files: %s", target_relative_filepaths)
-    
+
     class _Mapper:
         def __init__(self, filename):
             self.filename = filename
         def __call__(self, t):
             num, content = t
             return (self.filename, num, content)
-    
+
     rdds = [
         _file_chunks(sc, dir + '/' + f, blocksize).map(_Mapper(f)) \
         for f in target_relative_filepaths
     ]
-    
+
     all_chunks = sc.parallelize([])
     for rdd in rdds:
         all_chunks = all_chunks.union(rdd)
-    
+
     def _hash(t):
         f, num, content = t
         return _hash_chunk(f, num, content, algo)
-    
+
     hashed_chunks = all_chunks.map(_hash)
     x = hashed_chunks.sortBy(lambda t: (t[0], t[1])).collect()
-    
+
     _logger.debug("Chunk Hashes:\n%s", str(x))
-    
+
     # make sure that all_entries is sorted
     all_entries.sort()
     _logger.debug("Done sorting...")
-    
+
     # build the result hash
     res = get_hash_func(algo)
-    
+
     _logger.debug("Creating final hash value.")
     _logger.debug("All entries: " + str(all_entries))
     # first hash the number of all entries, then a zero byte
     res.update(str(len(all_entries)) + "\0")
     # then, hash the list of all entries, separated by zero bytes
     res.update("\0".join(all_entries))
-    
+
     # then, another zero bytes as a separator
     res.update("\0")
     _logger.debug("starting to add digests to the final hash value:")
-    
+
     # finally, the hash values of all chunks
     for path, num, content in x:
         _logger.debug("digest for chunk %s of file %s: %s", num, path, binascii.hexlify(content))
         res.update(content)
-    
+
     # this is the result:
     hash_value = res.hexdigest()
-    
+
     _logger.info("final hash value: %s", hash_value)
     return hash_value
 
@@ -452,13 +454,13 @@ def hash_directory(dir, algo, blocksize, sparkcontext=None):
     :returns: the string representation of the hash value of the given directory, including the hash function's name and the blocksize.
     :raises ValueError: if `algo` does not refer to a supported hash function or the `blocksize` is ill-formatted.
     """
-    
+
     raw_hash = hash_directory_raw(dir, algo, _parse_blocksize(blocksize), sparkcontext)
     return _build_hash_string(algo, blocksize, raw_hash)
 
 
 class HashComparisonResult:
-    
+
     """result of a hash comparison as `(boolean, actual_hash_value)`.
     
     This class represents the result of a comparison of hash values.
@@ -482,17 +484,17 @@ class HashComparisonResult:
     >>>            r.actual_hash_value()
     >>>        ))
     """
-    
+
     def __init__(self, match, actual_hash_value):
         self._match = match
         self._actual_hash_value = actual_hash_value
-    
+
     def match(self):
         return self._match
-    
+
     def actual_hash_value(self):
         return self._actual_hash_value
-    
+
     # in Python 3.0 and later, the magic method for conversion to a
     # boolean value is named __bool__.
     # in Python 2, __nonzero__ is used.
@@ -502,14 +504,14 @@ class HashComparisonResult:
     else:
         def __bool__(self):
             return self.match()
-    
+
     def __eq__(self, other):
         if isinstance(other, HashComparisonResult):
             return self.match() == other.match() and \
                 self.actual_hash_value() == other.actual_hash_value()
         else:
             return NotImplemented
-    
+
     def __repr__(self):
         return "HashComparisonResult(%s, %s)" % \
             (self.match(), self.actual_hash_value())
@@ -517,7 +519,7 @@ class HashComparisonResult:
 
 
 def verify_raw_directory_hash(dir, algo, blocksize, digest, sparkcontext=None):
-    
+
     """verifies that the given directory `dir` has the given hash value `digest`.
     
     :param dir: the path to a directory whose hash value shall be computed and checked against `digest`.
@@ -528,13 +530,13 @@ def verify_raw_directory_hash(dir, algo, blocksize, digest, sparkcontext=None):
         a new `SparkContext` will be created.
     :returns: a class:`HashComparisonResult` object (indicating if the actual hash value of `dir` matches `digest` and containing the actual hash value of `dir`).
     :raises ValueError: if algo does not refer to a supported hash function."""
-    
+
     h = hash_directory_raw(dir, algo, blocksize, sparkcontext)
     return HashComparisonResult(h == digest, h)
 
 
 def verify_directory_hash(dir, hash_string, sparkcontext=None):
-    
+
     """verifies that the given directory has the given hash value.
     
     :param dir: the path to a directory whose hash value shall be computed and checked against `hash_string`.
@@ -545,21 +547,40 @@ def verify_directory_hash(dir, hash_string, sparkcontext=None):
     and containing the actual hash value of `dir`).
     :raises ValueError: if `hash_string` can not be parsed.
     """
-    
+
     v, algo, blocksize, hash_value = _parse_hash_string(hash_string)
-    
+
     h = hash_directory_raw(dir, algo, blocksize, sparkcontext)
-    
+
     return HashComparisonResult(h == hash_value, h)
+
+
+def add_folder_to_hashed_repo(hashed_repo, path_to_folder, hash_str, set_readonly = True):
+    new_path = os.path.join(hashed_repo, hash_str)
+    # in python3 we could do:
+    # shutil.copytree(path_to_folder, new_path, copy_function=os.link)
+    # until then we have to do this:
+    try:
+        subprocess.check_output(['cp', '-rl', path_to_folder, new_path],stderr=subprocess.PIPE)
+        if set_readonly:
+            subprocess.check_output(['chmod', '-R', 'a-w', new_path],stderr=subprocess.PIPE)
+        return new_path
+    except subprocess.CalledProcessError as e:
+        message = """Error while executing command %s
+        output: %s
+        """ % (e.cmd, e.output)
+        _logger.error(message)
+
+
 
 def _main(argv):
     """Used when running this module stand-alone.
     
     :param argv: the complete command line arguments (e.g. `sys.argv`).
     """
-    
+
     _logger.debug("main called with argv == %s" % argv)
-    
+
     p = argparse.ArgumentParser()
     p.add_argument('--check', '-c', '--verify', '-v',
         help='Verify that the given directory has the given hash.',
@@ -576,6 +597,7 @@ def _main(argv):
         help='Block size. Ignored if --verify (or -v, -c or --check) is given.',
         dest="blocksize"
     )
+
     p.add_argument(
         '--hash-algorithm', '--algorithm', '-a',
         default='sha256',
@@ -584,11 +606,17 @@ def _main(argv):
         help='The Hash function used to process individual blocks/files.' \
             ' Ignored if --verify (or -v, -c or --check) is given.'
     )
+
+    p.add_argument('--add-folder-to-repo', '--repo', '-re', '--archive', '-ar',
+        help='hashes the folder and then hard-links the folder the hashed-repo',
+        dest='repo_path'
+    )
+
     p.add_argument('dir')
-    
+
     args = p.parse_args(argv[1:])
     _logger.debug("Parsed arguments: %s", args)
-    
+
     if args.hash_str or args.hash_name:
         if args.hash_str and args.hash_name:
             raise ValueError("parameter --check and --check-name can not be used together ")
@@ -601,7 +629,7 @@ def _main(argv):
 
         match = verify_directory_hash(args.dir, expected_hash)
         _, _, _, expected_hash_value = _parse_hash_string(expected_hash)
-        
+
         if match:
             print(
                 "The hash values match:\n%9s %s\n%9s %s\n" % \
@@ -619,7 +647,9 @@ def _main(argv):
                 )
             )
             exit(1) # return error to caller
-    
+    elif args.repo_path:
+        new_path = add_folder_to_hashed_repo(args.repo_path,args.dir, hash_directory(args.dir, args.hash_algo, args.blocksize))
+        print(new_path)
     else:
         h = hash_directory(args.dir, args.hash_algo, args.blocksize)
         print(h)
