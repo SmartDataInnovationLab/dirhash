@@ -561,14 +561,18 @@ def add_folder_to_hashed_repo(hashed_repo, path_to_folder, hash_str, set_readonl
     # shutil.copytree(path_to_folder, new_path, copy_function=os.link)
     # until then we have to do this:
     try:
-        subprocess.check_output(['cp', '-rl', path_to_folder, new_path],stderr=subprocess.PIPE)
+        # Note: in python 2.7 CalledProcessError has no stderr, so we need to do the "trick" with redirecting stderr
+        if not os.path.isdir(path_to_folder):
+            subprocess.check_output(['cp', '-rlu', path_to_folder, new_path],stderr=subprocess.STDOUT)
+        else:
+            _logger.info("folder alread exists: "+ path_to_folder)
         if set_readonly:
-            subprocess.check_output(['chmod', '-R', 'a-w', new_path],stderr=subprocess.PIPE)
+            subprocess.check_output(['chmod', '-R', 'a-w', new_path],stderr=subprocess.STDOUT)
         return new_path
     except subprocess.CalledProcessError as e:
         message = """Error while executing command %s
-        output: %s
-        """ % (e.cmd, e.output)
+output: %s
+""" % (e.cmd, e.output)
         _logger.error(message)
 
 
