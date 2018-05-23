@@ -616,6 +616,12 @@ def _main(argv):
         dest='repo_path'
     )
 
+    p.add_argument('--softlink', '--sl', '-s',
+        help='after copying the folder to the hashed repo, a softlink will be created pointing '\
+             'to the hashed repo. Must be used together with --add-folder-to-repo',
+        dest='softlink'
+    )
+
     p.add_argument('dir')
 
     args = p.parse_args(argv[1:])
@@ -652,8 +658,17 @@ def _main(argv):
             )
             exit(1) # return error to caller
     elif args.repo_path:
+        if args.softlink:
+            if os.path.exists(args.softlink):
+                print("softlink-target alread exists")
+                exit(1)
+
         new_path = add_folder_to_hashed_repo(args.repo_path,args.dir, hash_directory(args.dir, args.hash_algo, args.blocksize))
         print(new_path)
+        if args.softlink:
+            os.symlink(new_path, args.softlink)
+    elif args.softlink:
+        print("option --softlink must only be used with option --add-folder-to-repo")
     else:
         h = hash_directory(args.dir, args.hash_algo, args.blocksize)
         print(h)
