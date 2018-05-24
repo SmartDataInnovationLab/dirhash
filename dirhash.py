@@ -566,7 +566,8 @@ def move_folder_to_hashed_archive(hashed_repo, path_to_folder, hash_str, set_rea
             # subprocess.check_output(['cp', '-rlu', path_to_folder, new_path],stderr=subprocess.STDOUT)
             shutil.move(path_to_folder, new_path)
         else:
-            _logger.info("folder alread exists: "+ path_to_folder)
+            _logger.info("folder alread exists: "+ new_path + "\t so instead of moving the source, we just delete it.")
+            shutil.rmtree(path_to_folder)
         if set_readonly:
             subprocess.check_output(['chmod', '-R', 'a-w', new_path],stderr=subprocess.STDOUT)
         return new_path
@@ -667,7 +668,18 @@ def _main(argv):
         new_path = move_folder_to_hashed_archive(args.archive_path,args.dir, hash_directory(args.dir, args.hash_algo, args.blocksize))
         print(new_path)
         if args.softlink:
-            os.symlink(new_path, args.softlink)
+            if not os.path.exists(args.softlink):
+                os.makedirs(args.softlink)
+
+            try:
+                # os.symlink doesn't work. I don't know why.
+                subprocess.check_output(['ln', '-s', new_path, args.softlink],stderr=subprocess.STDOUT)
+
+            except subprocess.CalledProcessError as e:
+                message = """Error while executing command %s
+output: %s
+""" % (e.cmd, e.output)
+                _logger.error(message)
     elif args.softlink:
         print("option --softlink must only be used with option --move--to-archive")
     else:
