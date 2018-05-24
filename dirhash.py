@@ -555,15 +555,16 @@ def verify_directory_hash(dir, hash_string, sparkcontext=None):
     return HashComparisonResult(h == hash_value, h)
 
 
-def add_folder_to_hashed_repo(hashed_repo, path_to_folder, hash_str, set_readonly = True):
+def move_folder_to_hashed_archive(hashed_repo, path_to_folder, hash_str, set_readonly = True):
     new_path = os.path.join(hashed_repo, hash_str)
     # in python3 we could do:
     # shutil.copytree(path_to_folder, new_path, copy_function=os.link)
     # until then we have to do this:
     try:
         # Note: in python 2.7 CalledProcessError has no stderr, so we need to do the "trick" with redirecting stderr
-        if not os.path.isdir(path_to_folder):
-            subprocess.check_output(['cp', '-rlu', path_to_folder, new_path],stderr=subprocess.STDOUT)
+        if not os.path.isdir(new_path):
+            # subprocess.check_output(['cp', '-rlu', path_to_folder, new_path],stderr=subprocess.STDOUT)
+            shutil.move(path_to_folder, new_path)
         else:
             _logger.info("folder alread exists: "+ path_to_folder)
         if set_readonly:
@@ -611,13 +612,13 @@ def _main(argv):
             ' Ignored if --verify (or -v, -c or --check) is given.'
     )
 
-    p.add_argument('--add-folder-to-repo', '--repo', '-re', '--archive', '-ar',
-        help='hashes the folder and then hard-links the folder the hashed-repo',
-        dest='repo_path'
+    p.add_argument('--move-to-archive',
+        help='hashes the folder and then moves the folder the hashed-repo',
+        dest='archive_path'
     )
 
     p.add_argument('--softlink', '--sl', '-s',
-        help='after copying the folder to the hashed repo, a softlink will be created pointing '\
+        help='after move the folder to the hashed repo, a softlink will be created pointing '\
              'to the hashed repo. Must be used together with --add-folder-to-repo',
         dest='softlink'
     )
@@ -657,18 +658,18 @@ def _main(argv):
                 )
             )
             exit(1) # return error to caller
-    elif args.repo_path:
+    elif args.archive_path:
         if args.softlink:
-            if os.path.exists(args.softlink):
+            if os.path.exists(args.softlink) and os.path.normpath(args.dir) != os.path.normpath(args.softlink):
                 print("softlink-target alread exists")
                 exit(1)
 
-        new_path = add_folder_to_hashed_repo(args.repo_path,args.dir, hash_directory(args.dir, args.hash_algo, args.blocksize))
+        new_path = move_folder_to_hashed_archive(args.archive_path,args.dir, hash_directory(args.dir, args.hash_algo, args.blocksize))
         print(new_path)
         if args.softlink:
             os.symlink(new_path, args.softlink)
     elif args.softlink:
-        print("option --softlink must only be used with option --add-folder-to-repo")
+        print("option --softlink must only be used with option --move--to-archive")
     else:
         h = hash_directory(args.dir, args.hash_algo, args.blocksize)
         print(h)
