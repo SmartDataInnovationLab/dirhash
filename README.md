@@ -27,6 +27,12 @@ read the help-message:
 
     $ spark-submit dirhash.py --help 2>/dev/null
 
+Optional: You may want to install the pysha3 and/or pyblake2 module from PyPI:
+
+    $ pip install pysha3 pyblake2
+
+But these need to be available on the spark-workers, otherwise everything will break
+
 ## dev notes
 
 ### test on sdil 
@@ -34,13 +40,13 @@ read the help-message:
 use your local IDE to work directly on sdil files: 
 
     sudo apt install sshfs
-    sshfs ugfam@login-l.sdil.kit.edu:/gpfs/smartdata/ugfam ~/sdil/
+    sshfs <user>@login-l.sdil.kit.edu:/gpfs/smartdata/ugfam ~/sdil/
     
 run code on sdil: 
 
     # connect to spark-machine (which is not visible from outside)
-    ssh ugfam@login-l.sdil.kit.edu
-    ssh ugfam@bi-01-login.sdil.kit.edu
+    ssh <user>@login-l.sdil.kit.edu
+    ssh <user>@bi-01-login.sdil.kit.edu
     
     # setup project
     mkdir dev && cd dev
