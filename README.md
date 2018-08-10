@@ -31,7 +31,7 @@ Optional: You may want to install the pysha3 and/or pyblake2 module from PyPI:
 
     $ pip install pysha3 pyblake2
 
-But these need to be available on the spark-workers, otherwise everything will brake
+But these need to be available on the spark-workers, otherwise everything will break
 
 ## dev notes
 
